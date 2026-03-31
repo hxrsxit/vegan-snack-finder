@@ -45,7 +45,7 @@ const LoadingState = () => {
           <Leaf size={32} strokeWidth={1.5} className="text-[#01472e]" />
         </motion.div>
       </div>
-      
+
       <div className="h-8 mb-12">
         <AnimatePresence mode="wait">
           <motion.p
@@ -160,6 +160,7 @@ const HomePage = () => {
               className="mt-5 max-w-2xl font-['Inter'] text-base text-[#01472e]/75 md:text-lg"
             >
               Search 2000+ Indian food & beverages.
+              <br className="hidden sm:inline" />
               <br className="hidden sm:inline" />
               Ultimate Guide for Vegans in India.
             </motion.p>
