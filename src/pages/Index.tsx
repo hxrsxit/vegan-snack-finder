@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, forwardRef } from "react";
 import { Search, X, Leaf } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
 import { searchWithTypoTolerance } from "@/lib/fuzzy";
 
-const LoadingState = () => {
+const LoadingState = forwardRef<HTMLDivElement, any>((props, ref) => {
   const [msgIdx, setMsgIdx] = useState(0);
   const loadingMessages = [
     "Reading the ingredient lists...",
@@ -30,12 +30,14 @@ const LoadingState = () => {
 
   return (
     <motion.div
+      ref={ref}
+      {...props}
       key="loading"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.8 }}
-      className="py-10 flex flex-col items-center justify-center w-full"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.3 }}
+      className="py-16 flex flex-col items-center justify-center w-full"
     >
       <div className="relative flex items-center justify-center h-20 w-20 rounded-full bg-[#ccd5ae]/40 mb-6 shadow-[0_10px_30px_rgba(1,71,46,0.1)]">
         <motion.div
@@ -76,7 +78,7 @@ const LoadingState = () => {
       </div>
     </motion.div>
   );
-};
+});
 
 const HomePage = () => {
   const [query, setQuery] = useState("");
@@ -84,7 +86,36 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("All");
+  const [displayCount, setDisplayCount] = useState(30);
+  const observerTarget = useRef<HTMLDivElement>(null);
   const debouncedQuery = useDebounce(query, 300);
+
+  // Reset display count on new search or category change
+  useEffect(() => {
+    setDisplayCount(30);
+  }, [debouncedQuery, activeCategory]);
+
+  // Infinite scroll observer setup
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setDisplayCount((prev) => prev + 30);
+        }
+      },
+      { rootMargin: "200px" } // trigger before user hits very bottom
+    );
+    
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+    
+    // store ref value in variable for reliable cleanup
+    const currentTarget = observerTarget.current;
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+    };
+  }, [observerTarget]);
 
   useEffect(() => {
     const fetchSnacks = async () => {
@@ -134,6 +165,10 @@ const HomePage = () => {
       (s: Snack) => [s.name, s.brand || ""]
     );
   }, [activeCategory, debouncedQuery, snacks]);
+
+  const displayedSnacks = useMemo(() => {
+    return filtered.slice(0, displayCount);
+  }, [filtered, displayCount]);
 
   const motionEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -219,7 +254,7 @@ const HomePage = () => {
 
           <AnimatePresence mode="wait">
             {loading ? (
-              <LoadingState />
+              <LoadingState key="loadingState" />
             ) : error ? (
               <motion.div
                 key="error"
@@ -275,20 +310,29 @@ const HomePage = () => {
                     transition: { staggerChildren: 0.05, delayChildren: 0.02 },
                   },
                 }}
-                className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6"
+                className="w-full"
               >
-                {filtered.map((snack, i) => (
-                  <motion.div
-                    key={snack.slug}
-                    variants={{
-                      hidden: { opacity: 0, y: 20 },
-                      show: { opacity: 1, y: 0 },
-                    }}
-                    transition={{ duration: 0.6, ease: motionEase }}
-                  >
-                    <SnackCard snack={snack} index={i} />
-                  </motion.div>
-                ))}
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+                  {displayedSnacks.map((snack, i) => (
+                    <motion.div
+                      key={snack.slug}
+                      variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        show: { opacity: 1, y: 0 },
+                      }}
+                      transition={{ duration: 0.4, ease: motionEase }}
+                    >
+                      <SnackCard snack={snack} index={i} />
+                    </motion.div>
+                  ))}
+                </div>
+                
+                {/* Infinite Scroll trigger target */}
+                {displayCount < filtered.length && (
+                  <div ref={observerTarget} className="h-20 w-full mt-10 flex items-center justify-center">
+                    <div className="h-6 w-6 rounded-full border-t-2 border-[#01472e] animate-spin"></div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
