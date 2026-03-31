@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 const links = [
-  { label: "Follow on Instagram", href: "https://instagram.com", icon: Instagram },
+  { label: "Follow on Instagram", href: "https://instagram.com/vegan.psyop", icon: Instagram },
   { label: "Watch on YouTube", href: "https://youtube.com", icon: Youtube },
 ];
 
@@ -56,6 +56,7 @@ const JoinUs = () => (
         >
           <Button
             asChild
+            variant="outline"
             size="lg"
             className="w-full h-14 justify-start gap-3 rounded-2xl mt-2 border-border/60 bg-card/80 text-base font-semibold shadow-card transition-shadow hover:border-border hover:shadow-card-hover"
           >
