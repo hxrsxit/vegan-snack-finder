@@ -28,16 +28,29 @@ const escapeXml = (value) =>
     .replaceAll("'", "&apos;");
 
 async function generateSitemap() {
-  const { data, error } = await supabase
-    .from("isthisvegan_db")
-    .select("slug")
-    .not("slug", "is", null);
+  const PAGE_SIZE = 1000;
+  let allSlugs = [];
+  let from = 0;
 
-  if (error) {
-    throw new Error(`Failed to fetch snack slugs: ${error.message}`);
+  // Paginate through all rows — Supabase caps single queries at 1000 rows
+  while (true) {
+    const { data, error } = await supabase
+      .from("isthisvegan_db")
+      .select("slug")
+      .not("slug", "is", null)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      throw new Error(`Failed to fetch snack slugs: ${error.message}`);
+    }
+
+    allSlugs = allSlugs.concat(data ?? []);
+
+    if (!data || data.length < PAGE_SIZE) break; // last page reached
+    from += PAGE_SIZE;
   }
 
-  const dynamicRoutes = (data ?? [])
+  const dynamicRoutes = allSlugs
     .map(({ slug }) => slug)
     .filter(Boolean)
     .map((slug) => `/snack/${slug}`);
@@ -55,7 +68,7 @@ ${allRoutes
 `;
 
   await writeFile(resolve("public", "sitemap.xml"), xml, "utf8");
-  console.log(`Sitemap generated with ${allRoutes.length} URLs.`);
+  console.log(`Sitemap generated with ${allRoutes.length} URLs (${dynamicRoutes.length} products + ${staticRoutes.length} static).`);
 }
 
 generateSitemap().catch((error) => {

@@ -46,18 +46,32 @@ const HomePage = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from<Snack>("isthisvegan_db")
-        .select("*")
-        .order("name", { ascending: true });
+      const PAGE_SIZE = 1000;
+      let allData: Snack[] = [];
+      let from = 0;
 
-      if (error) {
-        setError(error.message);
-        setSnacks([]);
-      } else {
-        setSnacks(data ?? []);
+      // Paginate — Supabase caps single queries at 1000 rows
+      while (true) {
+        const { data, error } = await supabase
+          .from<Snack>("isthisvegan_db")
+          .select("*")
+          .order("name", { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) {
+          setError(error.message);
+          setSnacks([]);
+          setLoading(false);
+          return;
+        }
+
+        allData = allData.concat(data ?? []);
+
+        if (!data || data.length < PAGE_SIZE) break; // last page
+        from += PAGE_SIZE;
       }
 
+      setSnacks(allData);
       setLoading(false);
     };
 
